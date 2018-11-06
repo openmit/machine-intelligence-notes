@@ -63,9 +63,28 @@ $$
 Y.noalias() = (X * W.transpose()).rowwise() + b.row(0);
 ```
 
+> 这里`b.row(0)`的维度是(1,n[l])，使用了类似python中的广播机制 维度变为(k,n[l])
+
 反向传播通用公式：
 
+$$
+\mathbf{d}z^{[l]} = \mathbf{d}a^{[l]} \cdot \frac{\partial{a^{[l]}}}{\partial{z^{[l]}}} \\\
+\mathbf{d}W^{[l]} = \mathbf{d}z^{[l]} \cdot \frac{\partial{z^{[l]}}}{\partial{W^{[l]}}} = {\mathbf{d}z^{[l]}}^{\mathrm{T}} \cdot a^{[l-1]} \\\
+\mathbf{d}a^{[l-1]} = \mathbf{d}z^{[l]} \cdot W^{[l]}  \\\
+\mathbf{d}b^{[l]} = \mathbf{d}z^{[l]}   \qquad // 注：需要按cols求和
+$$
 
+针对NN的全连接$z^{[l]} = {a^{[l-1]}} \cdot {W^{[l]}}^{\mathrm{T}} + b^{[l]}$，伪代码：
 
+```c++
+dW.noalias() += dY.transpose() * X;
+dX.noalias() += dY * W;
+db.noalias() += dY.colwise().sum();
+```
 
-参考：http://www.cnblogs.com/southtonorth/archive/2018/08/21/9512559.html
+深度MLP 小结：
+
+1. 前向传播由多层的矩阵运算、连接函数共同组成，分别对应两个Graph Op算子；
+2. 反向传播从Loss出发，分别由多层的连接函数、矩阵运算的梯度计算组成；
+3. 参与Op算子的变量均要保存当前变量数据（data）和对应的梯度信息（grad），二者shape一致；
+
